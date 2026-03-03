@@ -126,11 +126,11 @@
     <div class="logo">✨</div>
     <div class="header-text">
       <h1>PositiveMail</h1>
-      <p>AI email tone rewriter</p>
+      <p>AI email tone rewriter · v1.0.0.4</p>
     </div>
     <button class="settings-btn" onclick="toggleSettings()" title="Signature Settings">⚙️</button>
   </div>
-  <div style="text-align:right; font-size:10px; color:var(--muted); margin-top:-8px;">v1.0.0.2</div>
+
 
   <!-- Status -->
   <div class="status-card" id="statusCard">
@@ -356,17 +356,19 @@
 
   // ── Rewrite ────────────────────────────────────────────────────
   async function rewriteEmail() {
-    // Refresh current body
+    // Get full email text (user draft + reply thread) — let AI separate them
+    let fullEmailText = '';
     await new Promise(resolve => {
       Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, result => {
         if (result.status === Office.AsyncResultStatus.Succeeded) {
-          currentBody = extractUserText(result.value.trim());
+          fullEmailText = result.value.trim();
+          currentBody = extractUserText(fullEmailText);
         }
         resolve();
       });
     });
 
-    if (!currentBody) {
+    if (!fullEmailText) {
       setStatus('error', 'Draft is empty — write something first!');
       return;
     }
@@ -386,8 +388,27 @@
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
-          system: `You are an expert email rewriter. Rewrite the following email with a ${selectedTone} tone. Keep the exact same meaning, length, and structure — do not add, remove, or change any information. Do not add a sign-off or signature. Return only the rewritten email text.`,
-          messages: [{ role: 'user', content: currentBody }]
+          system: `You are an expert email rewriter. You will receive the full contents of an email compose window, which may include the user's draft at the top followed by a reply thread below.
+
+Your job:
+1. IDENTIFY the user's draft — this is the text the user typed at the TOP, before any "From:", "Sent:", or quoted reply thread
+2. USE the reply thread below (if present) as context to understand the situation and inform the tone — but do NOT copy or include content from it
+3. REWRITE only the user's draft with a ${selectedTone} tone
+
+Each tone means something distinct:
+- "positive and upbeat": Warm, encouraging, optimistic — uses upbeat language and light exclamation points
+- "warm and friendly": Conversational and personal, like writing to someone you know well
+- "enthusiastic and energetic": High energy, bold, action-oriented language
+- "professional yet approachable": Polished and confident but not stiff or cold
+- "concise and friendly": Short, direct sentences — cut all fluff while keeping a pleasant tone
+
+RULES:
+- Actively rewrite the wording and voice — do not keep the original phrasing
+- Keep the exact same meaning and intent of the user's draft
+- Do NOT add information from the reply thread into the rewrite
+- Do NOT include a sign-off or signature
+- Return ONLY the rewritten draft text — nothing else`,
+          messages: [{ role: 'user', content: fullEmailText }]
         })
       });
 
