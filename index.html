@@ -311,17 +311,18 @@
   // Extract only user's typed content (above thread/signature)
   function extractUserText(fullText) {
     const separators = [
-      /\r?\nFrom:\s/i,
-      /\r?\nSent:\s/i,
-      /\r?\nOn .+ wrote:/i,
-      /\r?\n_{3,}/,
-      /\r?\n-{3,}\r?\n/,
-      /\r?\n>\s/,
+      /\r?\n_{5,}/,                    // _____ Outlook reply separator
+      /\r?\n-{5,}/,                    // ----- long dash line
+      /\r?\nFrom:\s+\S/im,           // From: line
+      /\r?\nSent:\s+\S/im,           // Sent: line
+      /\r?\nOn .{5,} wrote:/im,        // On [date] X wrote:
+      /\r?\n>\s?\S/,                 // > quoted line
+      /\r?\nDate:\s+\S/im,           // Date: header
     ];
     let earliest = fullText.length;
     for (const sep of separators) {
-      const idx = fullText.search(sep);
-      if (idx > 0 && idx < earliest) earliest = idx;
+      const match = fullText.search(sep);
+      if (match > 0 && match < earliest) earliest = match;
     }
     return fullText.substring(0, earliest).trim();
   }
@@ -438,7 +439,7 @@ Return ONLY the rewritten email body text. No explanation, no subject line, no p
 
       const fullHtml = result.value;
 
-      // Find reply thread start — preserve everything from here down
+      // Find reply thread — preserve from here down
       const threadMarkers = ['<div id="divRplyFwdMsg"', '<blockquote'];
       let threadStart = -1;
       for (const marker of threadMarkers) {
@@ -447,51 +448,20 @@ Return ONLY the rewritten email body text. No explanation, no subject line, no p
       }
       const threadHtml = threadStart > 0 ? fullHtml.substring(threadStart) : '';
 
-      // Build body HTML: just the rewritten text + reply thread (no signature)
+      // Build final HTML: rewritten body + saved signature + reply thread
       const rewrittenHtml = '<div>' + rewrittenText.split('\n').join('<br>') + '</div>';
-      const bodyHtml = rewrittenHtml + (threadHtml ? '<br>' + threadHtml : '');
+      const sigHtml = savedSig ? '<br><div id="pm-sig">' + savedSig + '</div>' : '';
+      const newHtml = rewrittenHtml + sigHtml + (threadHtml ? '<br>' + threadHtml : '');
 
-      // Step 1: Set body (clears everything including old signature)
-      Office.context.mailbox.item.body.setAsync(bodyHtml, { coercionType: Office.CoercionType.Html }, setResult => {
-        if (setResult.status !== Office.AsyncResultStatus.Succeeded) {
-          showToast('❌ Could not update draft');
-          return;
-        }
-
-        if (!savedSig) {
-          // No saved signature — just use Outlook's default by doing nothing
+      // Set entire body in one shot — no append, no duplicate
+      Office.context.mailbox.item.body.setAsync(newHtml, { coercionType: Office.CoercionType.Html }, setResult => {
+        if (setResult.status === Office.AsyncResultStatus.Succeeded) {
           showToast('✅ Draft updated!');
           document.getElementById('resultSection').classList.remove('visible');
           setStatus('ready', 'Draft updated successfully');
           loadEmailBody();
-          return;
-        }
-
-        // Step 2: Use setSignatureAsync to properly insert signature
-        // This replaces whatever signature Outlook would normally add
-        if (Office.context.mailbox.item.body.setSignatureAsync) {
-          Office.context.mailbox.item.body.setSignatureAsync(
-            savedSig,
-            { coercionType: Office.CoercionType.Html },
-            sigResult => {
-              showToast('✅ Draft updated!');
-              document.getElementById('resultSection').classList.remove('visible');
-              setStatus('ready', 'Draft updated successfully');
-              loadEmailBody();
-            }
-          );
         } else {
-          // Fallback for older Outlook versions: append signature manually
-          Office.context.mailbox.item.body.getAsync(Office.CoercionType.Html, r2 => {
-            if (r2.status !== Office.AsyncResultStatus.Succeeded) return;
-            const withSig = r2.value + '<br><div>' + savedSig + '</div>';
-            Office.context.mailbox.item.body.setAsync(withSig, { coercionType: Office.CoercionType.Html }, () => {
-              showToast('✅ Draft updated!');
-              document.getElementById('resultSection').classList.remove('visible');
-              setStatus('ready', 'Draft updated successfully');
-              loadEmailBody();
-            });
-          });
+          showToast('❌ Could not update draft');
         }
       });
     });
