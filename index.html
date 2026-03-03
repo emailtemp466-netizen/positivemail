@@ -126,7 +126,7 @@
     <div class="logo">✨</div>
     <div class="header-text">
       <h1>PositiveMail</h1>
-      <p>AI email tone rewriter · v1.0.0.4</p>
+      <p>AI email rewriter · v1.0.0.5</p>
     </div>
     <button class="settings-btn" onclick="toggleSettings()" title="Signature Settings">⚙️</button>
   </div>
@@ -170,17 +170,7 @@
     <div class="preview-box" id="previewBox">Loading your email…</div>
   </div>
 
-  <!-- Tone selection -->
-  <div>
-    <div class="section-label">Rewrite Tone</div>
-    <div class="tone-grid">
-      <button class="tone-pill active" data-tone="positive and upbeat">😊 Upbeat</button>
-      <button class="tone-pill" data-tone="warm and friendly">🤝 Friendly</button>
-      <button class="tone-pill" data-tone="enthusiastic and energetic">⚡ Enthusiastic</button>
-      <button class="tone-pill" data-tone="professional yet approachable">💼 Professional</button>
-      <button class="tone-pill full-width" data-tone="concise and friendly">✂️ Concise & Clear</button>
-    </div>
-  </div>
+
 
   <!-- Rewrite button -->
   <button class="rewrite-btn" id="rewriteBtn" onclick="rewriteEmail()">
@@ -388,26 +378,21 @@
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
-          system: `You are an expert email rewriter. You will receive the full contents of an email compose window, which may include the user's draft at the top followed by a reply thread below.
+          system: `You are an expert email rewriter for a small business owner. You will receive a draft reply and the email thread it is replying to.
 
-Your job:
-1. IDENTIFY the user's draft — this is the text the user typed at the TOP, before any "From:", "Sent:", or quoted reply thread
-2. USE the reply thread below (if present) as context to understand the situation and inform the tone — but do NOT copy or include content from it
-3. REWRITE only the user's draft with a ${selectedTone} tone
+Your job is to rewrite the draft to be upbeat, friendly, and professional — like a confident, optimistic business owner who genuinely appreciates the people they work with.
 
-Each tone means something distinct:
-- "positive and upbeat": Warm, encouraging, optimistic — uses upbeat language and light exclamation points
-- "warm and friendly": Conversational and personal, like writing to someone you know well
-- "enthusiastic and energetic": High energy, bold, action-oriented language
-- "professional yet approachable": Polished and confident but not stiff or cold
-- "concise and friendly": Short, direct sentences — cut all fluff while keeping a pleasant tone
-
-RULES:
-- Actively rewrite the wording and voice — do not keep the original phrasing
-- Keep the exact same meaning and intent of the user's draft
-- Do NOT add information from the reply thread into the rewrite
-- Do NOT include a sign-off or signature
-- Return ONLY the rewritten draft text — nothing else`,
+Guidelines:
+- The user's draft is at the TOP of the message, before any "From:" or "Sent:" line — rewrite only that part
+- Address recipients by name if you can identify them from the thread
+- Keep the same core message and intent — do not change what they are asking or saying
+- You may expand the draft slightly to sound warmer and more complete, but do not add new facts or requests that weren't in the original
+- Use the thread context to make the tone feel relevant and personal — not generic
+- Keep the signature exactly as written at the bottom of the draft — do not modify it
+- Sound like a real person — warm, genuine, and confident
+- Do not use hollow filler phrases like "I hope this email finds you well"
+- Do not add a second signature or closing if one already exists
+- Return the full rewritten email including greeting and signature`,
           messages: [{ role: 'user', content: fullEmailText }]
         })
       });
