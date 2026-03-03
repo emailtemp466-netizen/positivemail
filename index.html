@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PositiveMail</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1d2130;
+    --border: #2a2f42;
+    --accent: #4ade80;
+    --accent2: #86efac;
+    --accent-glow: rgba(74,222,128,0.15);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+  }
+
+  html, body { height: 100%; font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(rgba(74,222,128,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(74,222,128,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 100vh; }
+
+  .header { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .logo { width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent), #22c55e); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 0 16px rgba(74,222,128,0.3); flex-shrink: 0; }
+  .header-text h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-text p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .settings-btn { margin-left: auto; background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 16px; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+  .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .status-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .status-card.ready { border-color: rgba(74,222,128,0.25); background: rgba(74,222,128,0.05); color: var(--accent2); }
+  .status-card.error { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.07); color: #f87171; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-card.ready .status-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse 2s infinite; }
+  .status-card.error .status-dot { background: #f87171; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .section-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+
+  .tone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tone-pill { background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 500; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: all 0.15s; text-align: left; display: flex; align-items: center; gap: 6px; }
+  .tone-pill:hover { border-color: rgba(74,222,128,0.4); color: var(--accent2); }
+  .tone-pill.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+  .tone-pill.full-width { grid-column: 1 / -1; }
+
+  .preview-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 12px; line-height: 1.6; color: var(--muted); min-height: 80px; max-height: 140px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+  .preview-box.has-content { color: var(--text); border-color: rgba(255,255,255,0.08); }
+
+  .rewrite-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent), #22c55e); border: none; border-radius: 10px; color: #052e16; font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 16px rgba(74,222,128,0.25); }
+  .rewrite-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(74,222,128,0.35); }
+  .rewrite-btn:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; box-shadow: none; transform: none; }
+
+  .result-section { display: none; }
+  .result-section.visible { display: block; }
+  .result-box { background: var(--surface); border: 1px solid rgba(74,222,128,0.25); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+  .result-header { background: rgba(74,222,128,0.07); padding: 9px 12px; border-bottom: 1px solid rgba(74,222,128,0.15); display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+  .result-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 5px var(--accent); }
+  .result-text { padding: 12px; font-size: 12px; line-height: 1.65; color: var(--text); white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
+  .result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .action-btn { padding: 11px; border-radius: 8px; font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--muted); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary { background: var(--accent); border-color: var(--accent); color: #052e16; }
+  .action-btn.primary:hover { background: #22c55e; }
+
+  /* Settings panel */
+  .settings-panel { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .settings-panel.visible { display: block; }
+  .settings-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .settings-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+
+  /* Signature editor - white background so formatting is visible */
+  .sig-editor {
+    width: 100%;
+    min-height: 120px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    color: #000;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    outline: none;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+  }
+
+  .sig-toolbar { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .sig-tool { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: all 0.15s; }
+  .sig-tool:hover { border-color: var(--accent); color: var(--accent); }
+
+  .sig-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .sig-saved-indicator { font-size: 11px; color: var(--accent); text-align: center; margin-top: 6px; display: none; }
+  .sig-saved-indicator.visible { display: block; }
+
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(5,46,22,0.3); border-top-color: #052e16; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--accent); color: #052e16; font-size: 12px; font-weight: 600; padding: 8px 16px; border-radius: 100px; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 100; pointer-events: none; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo">✨</div>
+    <div class="header-text">
+      <h1>PositiveMail</h1>
+      <p>AI email tone rewriter</p>
+    </div>
+    <button class="settings-btn" onclick="toggleSettings()" title="Signature Settings">⚙️</button>
+  </div>
+
+  <!-- Status -->
+  <div class="status-card" id="statusCard">
+    <div class="status-dot"></div>
+    <span id="statusText">Connecting to Outlook…</span>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-title">✍️ Your Signature</div>
+    <div class="settings-desc">Paste or type your signature below with full formatting. It will be automatically appended whenever you apply a rewrite.</div>
+
+    <div class="sig-toolbar">
+      <button class="sig-tool" onclick="sigFormat('bold')"><b>B</b></button>
+      <button class="sig-tool" onclick="sigFormat('italic')"><i>I</i></button>
+      <button class="sig-tool" onclick="sigFormat('underline')"><u>U</u></button>
+      <label class="sig-tool" style="cursor:pointer;" title="Text Color">
+        🎨 Color
+        <input type="color" id="colorPicker" style="width:0;height:0;opacity:0;position:absolute;" onchange="applySigColor(this.value)">
+      </label>
+      <button class="sig-tool" onclick="sigClear()">🗑 Clear</button>
+    </div>
+
+    <div class="sig-editor" id="sigEditor" contenteditable="true" spellcheck="false"
+      placeholder="Type or paste your signature here…"></div>
+
+    <div class="sig-actions">
+      <button class="action-btn" onclick="toggleSettings()">Cancel</button>
+      <button class="action-btn primary" onclick="saveSignature()">💾 Save Signature</button>
+    </div>
+    <div class="sig-saved-indicator" id="sigSavedIndicator">✓ Signature saved!</div>
+  </div>
+
+  <!-- Current email preview -->
+  <div>
+    <div class="section-label">Current Draft</div>
+    <div class="preview-box" id="previewBox">Loading your email…</div>
+  </div>
+
+  <!-- Tone selection -->
+  <div>
+    <div class="section-label">Rewrite Tone</div>
+    <div class="tone-grid">
+      <button class="tone-pill active" data-tone="positive and upbeat">😊 Upbeat</button>
+      <button class="tone-pill" data-tone="warm and friendly">🤝 Friendly</button>
+      <button class="tone-pill" data-tone="enthusiastic and energetic">⚡ Enthusiastic</button>
+      <button class="tone-pill" data-tone="professional yet approachable">💼 Professional</button>
+      <button class="tone-pill full-width" data-tone="concise and friendly">✂️ Concise & Clear</button>
+    </div>
+  </div>
+
+  <!-- Rewrite button -->
+  <button class="rewrite-btn" id="rewriteBtn" onclick="rewriteEmail()">
+    <span id="btnIcon">✨</span>
+    <span id="btnText">Rewrite My Email</span>
+  </button>
+
+  <!-- Result -->
+  <div class="result-section" id="resultSection">
+    <div class="section-label" style="margin-bottom:8px">Rewritten Version</div>
+    <div class="result-box">
+      <div class="result-header">
+        <div class="result-dot"></div>
+        AI Rewritten
+      </div>
+      <div class="result-text" id="resultText"></div>
+    </div>
+    <div class="result-actions">
+      <button class="action-btn" onclick="copyResult()">📋 Copy</button>
+      <button class="action-btn primary" onclick="applyResult()">✅ Apply to Draft</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let selectedTone = 'positive and upbeat';
+  let currentBody = '';
+  let rewrittenText = '';
+
+  // ── Signature storage ──────────────────────────────────────────
+  const SIG_KEY = 'positivemail_signature';
+
+  function loadSavedSignature() {
+    try {
+      const saved = localStorage.getItem(SIG_KEY);
+      if (saved) {
+        document.getElementById('sigEditor').innerHTML = saved;
+      }
+    } catch(e) {}
+  }
+
+  function saveSignature() {
+    try {
+      const html = document.getElementById('sigEditor').innerHTML;
+      localStorage.setItem(SIG_KEY, html);
+      const ind = document.getElementById('sigSavedIndicator');
+      ind.classList.add('visible');
+      setTimeout(() => ind.classList.remove('visible'), 2000);
+    } catch(e) {
+      showToast('Could not save signature');
+    }
+  }
+
+  function getSavedSignatureHtml() {
+    try {
+      return localStorage.getItem(SIG_KEY) || '';
+    } catch(e) { return ''; }
+  }
+
+  function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    panel.classList.toggle('visible');
+    if (panel.classList.contains('visible')) {
+      loadSavedSignature();
+    }
+  }
+
+  // Signature formatting toolbar
+  function sigFormat(cmd) {
+    document.getElementById('sigEditor').focus();
+    document.execCommand(cmd, false, null);
+  }
+
+  function sigColor() {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+    // Save selection before color picker steals focus
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    input.addEventListener('input', () => {
+      document.getElementById('sigEditor').focus();
+      if (range) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      document.execCommand('foreColor', false, input.value);
+    });
+    input.addEventListener('change', () => document.body.removeChild(input));
+    input.click();
+  }
+
+  function sigClear() {
+    if (confirm('Clear your signature?')) {
+      document.getElementById('sigEditor').innerHTML = '';
+    }
+  }
+
+  // ── Office init ────────────────────────────────────────────────
+  Office.onReady(info => {
+    if (info.host === Office.HostType.Outlook) {
+      loadEmailBody();
+      setStatus('ready', 'Draft loaded — ready to rewrite');
+    } else {
+      setStatus('error', 'Please open this inside Outlook');
+    }
+  });
+
+  function setStatus(type, msg) {
+    const card = document.getElementById('statusCard');
+    const text = document.getElementById('statusText');
+    card.className = 'status-card ' + type;
+    text.textContent = msg;
+  }
+
+  // Strip HTML to plain text
+  function htmlToText(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return (tmp.textContent || tmp.innerText || '').trim();
+  }
+
+  // Extract only user's typed content (above thread/signature)
+  function extractUserText(fullText) {
+    const separators = [
+      /\r?\nFrom:\s/i,
+      /\r?\nSent:\s/i,
+      /\r?\nOn .+ wrote:/i,
+      /\r?\n_{3,}/,
+      /\r?\n-{3,}\r?\n/,
+      /\r?\n>\s/,
+    ];
+    let earliest = fullText.length;
+    for (const sep of separators) {
+      const idx = fullText.search(sep);
+      if (idx > 0 && idx < earliest) earliest = idx;
+    }
+    return fullText.substring(0, earliest).trim();
+  }
+
+  function loadEmailBody() {
+    Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, result => {
+      if (result.status === Office.AsyncResultStatus.Succeeded) {
+        currentBody = extractUserText(result.value.trim());
+        const preview = document.getElementById('previewBox');
+        if (currentBody) {
+          preview.textContent = currentBody.length > 300 ? currentBody.substring(0, 300) + '…' : currentBody;
+          preview.classList.add('has-content');
+        } else {
+          preview.textContent = 'Your email draft is empty. Start typing in the compose window first.';
+        }
+      } else {
+        setStatus('error', 'Could not read draft');
+      }
+    });
+  }
+
+  // ── Tone pills ─────────────────────────────────────────────────
+  document.querySelectorAll('.tone-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.tone-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedTone = pill.dataset.tone;
+    });
+  });
+
+  // ── Rewrite ────────────────────────────────────────────────────
+  async function rewriteEmail() {
+    // Refresh current body
+    await new Promise(resolve => {
+      Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, result => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          currentBody = extractUserText(result.value.trim());
+        }
+        resolve();
+      });
+    });
+
+    if (!currentBody) {
+      setStatus('error', 'Draft is empty — write something first!');
+      return;
+    }
+
+    const btn = document.getElementById('rewriteBtn');
+    const btnText = document.getElementById('btnText');
+    const btnIcon = document.getElementById('btnIcon');
+    btn.disabled = true;
+    btnText.textContent = 'Rewriting…';
+    btnIcon.outerHTML = '<div class="spinner" id="btnIcon"></div>';
+    setStatus('ready', 'AI is rewriting your email…');
+
+    try {
+      // Get full thread text for context only
+      const fullText = await new Promise(resolve => {
+        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, result => {
+          resolve(result.status === Office.AsyncResultStatus.Succeeded ? result.value.trim() : '');
+        });
+      });
+      const threadContext = fullText.substring(currentBody.length).trim();
+
+      const userContent = threadContext
+        ? `REPLY THREAD CONTEXT (for tone/friendliness reference only — do NOT add any new information from this into your rewrite):\n${threadContext}\n\n---\nEMAIL TO REWRITE:\n${currentBody}`
+        : currentBody;
+
+      const response = await fetch('https://restless-wood-ea92.emailtemp466.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: `You are an expert email rewriter. Rewrite the EMAIL TO REWRITE to have a ${selectedTone} tone while:
+- Preserving ALL original information and intent exactly — do not add, remove, or change any facts
+- You may use the REPLY THREAD CONTEXT only to inform tone and friendliness, not to add new content
+- Keeping similar length — no unnecessary filler
+- Sounding natural and authentic, not forced
+- Do NOT include a sign-off or signature — that will be added automatically
+
+Return ONLY the rewritten email body text. No explanation, no subject line, no preamble, no sign-off.`,
+          messages: [{ role: 'user', content: userContent }]
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+
+      rewrittenText = data.content.map(b => b.text || '').join('').trim();
+      document.getElementById('resultText').textContent = rewrittenText;
+      document.getElementById('resultSection').classList.add('visible');
+      setStatus('ready', 'Done! Apply it or copy it below.');
+
+    } catch (err) {
+      setStatus('error', err.message || 'Unknown error');
+    } finally {
+      btn.disabled = false;
+      document.getElementById('btnIcon').outerHTML = '<span id="btnIcon">✨</span>';
+      btnText.textContent = 'Rewrite My Email';
+    }
+  }
+
+  // ── Apply result ───────────────────────────────────────────────
+  function applyResult() {
+    if (!rewrittenText) return;
+    const savedSig = getSavedSignatureHtml();
+
+    Office.context.mailbox.item.body.getAsync(Office.CoercionType.Html, result => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) {
+        showToast('❌ Could not read draft');
+        return;
+      }
+
+      const fullHtml = result.value;
+
+      // Find reply thread start — preserve everything from here down
+      const threadMarkers = ['<div id="divRplyFwdMsg"', '<blockquote'];
+      let threadStart = -1;
+      for (const marker of threadMarkers) {
+        const idx = fullHtml.indexOf(marker);
+        if (idx > 0 && (threadStart === -1 || idx < threadStart)) threadStart = idx;
+      }
+      const threadHtml = threadStart > 0 ? fullHtml.substring(threadStart) : '';
+
+      // Build body HTML: just the rewritten text + reply thread (no signature)
+      const rewrittenHtml = '<div>' + rewrittenText.split('\n').join('<br>') + '</div>';
+      const bodyHtml = rewrittenHtml + (threadHtml ? '<br>' + threadHtml : '');
+
+      // Step 1: Set body (clears everything including old signature)
+      Office.context.mailbox.item.body.setAsync(bodyHtml, { coercionType: Office.CoercionType.Html }, setResult => {
+        if (setResult.status !== Office.AsyncResultStatus.Succeeded) {
+          showToast('❌ Could not update draft');
+          return;
+        }
+
+        if (!savedSig) {
+          // No saved signature — just use Outlook's default by doing nothing
+          showToast('✅ Draft updated!');
+          document.getElementById('resultSection').classList.remove('visible');
+          setStatus('ready', 'Draft updated successfully');
+          loadEmailBody();
+          return;
+        }
+
+        // Step 2: Use setSignatureAsync to properly insert signature
+        // This replaces whatever signature Outlook would normally add
+        if (Office.context.mailbox.item.body.setSignatureAsync) {
+          Office.context.mailbox.item.body.setSignatureAsync(
+            savedSig,
+            { coercionType: Office.CoercionType.Html },
+            sigResult => {
+              showToast('✅ Draft updated!');
+              document.getElementById('resultSection').classList.remove('visible');
+              setStatus('ready', 'Draft updated successfully');
+              loadEmailBody();
+            }
+          );
+        } else {
+          // Fallback for older Outlook versions: append signature manually
+          Office.context.mailbox.item.body.getAsync(Office.CoercionType.Html, r2 => {
+            if (r2.status !== Office.AsyncResultStatus.Succeeded) return;
+            const withSig = r2.value + '<br><div>' + savedSig + '</div>';
+            Office.context.mailbox.item.body.setAsync(withSig, { coercionType: Office.CoercionType.Html }, () => {
+              showToast('✅ Draft updated!');
+              document.getElementById('resultSection').classList.remove('visible');
+              setStatus('ready', 'Draft updated successfully');
+              loadEmailBody();
+            });
+          });
+        }
+      });
+    });
+  }
+
+
