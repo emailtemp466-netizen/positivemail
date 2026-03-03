@@ -387,8 +387,20 @@
       });
       const threadContext = fullText.substring(currentBody.length).trim();
 
+      const systemPrompt = threadContext
+        ? `You are an expert email rewriter.
+
+CRITICAL RULES:
+1. Rewrite ONLY the text in the "EMAIL TO REWRITE" section
+2. The "THREAD CONTEXT" is for background understanding ONLY — do NOT copy, reference, or include ANY content, sentences, or details from it in your output
+3. Your output must be a rewritten version of the EMAIL TO REWRITE with a ${selectedTone} tone
+4. Keep the exact same length and meaning as the original
+5. Do NOT add a sign-off, signature, or closing
+6. Do NOT add any new information not present in the EMAIL TO REWRITE`
+        : `You are an expert email rewriter. Rewrite the following email with a ${selectedTone} tone. Keep the exact same meaning and length. Do not add a sign-off or signature. Return only the rewritten text.`;
+
       const userContent = threadContext
-        ? `REPLY THREAD CONTEXT (for tone/friendliness reference only — do NOT add any new information from this into your rewrite):\n${threadContext}\n\n---\nEMAIL TO REWRITE:\n${currentBody}`
+        ? `THREAD CONTEXT (do NOT include anything from this in your rewrite):\n${threadContext}\n\nEMAIL TO REWRITE (rewrite ONLY this):\n${currentBody}`
         : currentBody;
 
       const response = await fetch('https://restless-wood-ea92.emailtemp466.workers.dev', {
@@ -397,14 +409,7 @@
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
-          system: `You are an expert email rewriter. Rewrite the EMAIL TO REWRITE to have a ${selectedTone} tone while:
-- Preserving ALL original information and intent exactly — do not add, remove, or change any facts
-- You may use the REPLY THREAD CONTEXT only to inform tone and friendliness, not to add new content
-- Keeping similar length — no unnecessary filler
-- Sounding natural and authentic, not forced
-- Do NOT include a sign-off or signature — that will be added automatically
-
-Return ONLY the rewritten email body text. No explanation, no subject line, no preamble, no sign-off.`,
+          system: systemPrompt,
           messages: [{ role: 'user', content: userContent }]
         })
       });
